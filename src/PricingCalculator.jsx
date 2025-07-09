@@ -51,7 +51,7 @@ export default function PricingCalculator() {
         return;
       }
     } else {
-      setPrice("Over 100,000 – custom rate");
+      setPrice("Over 100,000 - Contact Jim for pricing");
       setBreakdown("");
       return;
     }

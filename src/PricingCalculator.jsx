@@ -32,7 +32,11 @@ export default function PricingCalculator() {
     }
 
     total += sfCharge + mileCharge;
-    setPrice(`$${total.toFixed(2)}`);
+
+    // Round to nearest $50
+    const roundedTotal = Math.round(total / 50) * 50;
+
+    setPrice(`$${roundedTotal.toFixed(2)}`);
   };
 
   return (

@@ -4,43 +4,56 @@ export default function PricingCalculator() {
   const [squareFeet, setSquareFeet] = useState(0);
   const [miles, setMiles] = useState(0);
   const [price, setPrice] = useState(null);
+  const [breakdown, setBreakdown] = useState("");
 
   const calculatePrice = () => {
     let sf = Number(squareFeet);
     let mi = Number(miles);
-    let total = 775; // flat fee
+    let baseFee = 750;
     let sfCharge = 0;
     let mileCharge = 0;
+    let rate = 0;
+    let billableSF = sf - 5000;
 
-    // Square footage pricing tiers
-    if (sf > 5000 && sf <= 10000) {
-      sfCharge = (sf - 5000) * 0.10;
-    } else if (sf > 10000 && sf <= 25000) {
-      sfCharge = (5000 * 0.10) + (sf - 10000) * 0.10;
-    } else if (sf > 25000 && sf <= 50000) {
-      sfCharge = (5000 * 0.10) + (15000 * 0.10) + (sf - 25000) * 0.05;
-    } else if (sf > 50000 && sf <= 100000) {
-      sfCharge = (5000 * 0.10) + (15000 * 0.10) + (25000 * 0.05) + (sf - 50000) * 0.02;
-    } else if (sf > 100000) {
+    if (sf <= 5000) {
+      setPrice("$750.00");
+      setBreakdown(`Base Fee: $750\nSquare Footage: 0 (below threshold)\nMileage: 0 (below threshold)`);
+      return;
+    } else if (sf <= 10000) {
+      rate = 0.15;
+    } else if (sf <= 25000) {
+      rate = 0.10;
+    } else if (sf <= 50000) {
+      rate = 0.05;
+    } else if (sf <= 100000) {
+      rate = 0.02;
+    } else {
       setPrice("Over 100,000 – custom rate");
+      setBreakdown("");
       return;
     }
 
-    // Mileage surcharge
+    sfCharge = billableSF * rate;
+
     if (mi > 50) {
       mileCharge = (mi - 50) * 5;
     }
 
-    total += sfCharge + mileCharge;
-
-    // Round to nearest $50
-    const roundedTotal = Math.round(total / 50) * 50;
+    let total = baseFee + sfCharge + mileCharge;
+    let roundedTotal = Math.round(total / 50) * 50;
 
     setPrice(`$${roundedTotal.toFixed(2)}`);
+
+    setBreakdown(
+      `Base Fee: $${baseFee.toFixed(2)}\n` +
+      `Square Footage: ${billableSF} SF × $${rate.toFixed(2)} = $${sfCharge.toFixed(2)}\n` +
+      `Mileage: ${mi > 50 ? mi - 50 : 0} mi × $5 = $${mileCharge.toFixed(2)}\n` +
+      `Rounded Total: $${roundedTotal.toFixed(2)}`
+    );
   };
 
   return (
-    <div style={{ maxWidth: "400px", margin: "2rem auto", padding: "1.5rem", border: "1px solid #ccc", borderRadius: "10px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)" }}>
+    <div style={{ maxWidth: "500px", margin: "2rem auto", padding: "1.5rem", border: "1px solid #ccc", borderRadius: "10px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)" }}>
       <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", textAlign: "center", marginBottom: "1rem" }}>Pricing Calculator</h1>
       <div style={{ marginBottom: "1rem" }}>
         <label style={{ display: "block", marginBottom: ".5rem" }}>Square Footage</label>
@@ -72,6 +85,11 @@ export default function PricingCalculator() {
         <div style={{ marginTop: "1rem", fontSize: "1.25rem", fontWeight: "bold", color: "#16a34a", textAlign: "center" }}>
           Estimated Total: {price}
         </div>
+      )}
+      {breakdown && (
+        <pre style={{ marginTop: "1.5rem", padding: "1rem", background: "#f8f8f8", borderRadius: "8px", whiteSpace: "pre-wrap", fontSize: ".95rem", lineHeight: "1.5" }}>
+          {breakdown}
+        </pre>
       )}
     </div>
   );

@@ -1,72 +1,3 @@
-const [inputText, setInputText] = useState('');
-
-...
-
-<Autocomplete
-  onLoad={(ref) => (autocompleteRef.current = ref)}
-  onPlaceChanged={() => {
-    handlePlaceChanged();
-    // Optional: lock the text once a valid place is selected
-    const place = autocompleteRef.current.getPlace();
-    if (place && place.formatted_address) {
-      setInputText(place.formatted_address);
-    }
-  }}
->
-  <input
-    ref={inputRef}
-    type="text"
-    value={inputText}
-    onChange={(e) => setInputText(e.target.value)}
-    placeholder="Enter property address"
-    className="w-full p-3 border border-gray-300 rounded mb-4 focus:ring-2 focus:ring-[#6CA635]"
-  />
-</Autocomplete>
-🔁 And update your handlePlaceChanged to:
-js
-Copy
-Edit
-const handlePlaceChanged = () => {
-  const place = autocompleteRef.current.getPlace();
-  if (place && place.formatted_address) {
-    setGoogleAddress(place.formatted_address);
-    calculateGoogleDistance(place.formatted_address);
-    setGoogleSF(10000);
-  }
-};
-🧠 Why this works
-By binding the input field to inputText, you stop Google from hijacking the input box — React remains in control. Then when a full place is selected, you update both the visual field (inputText) and the internal state (googleAddress, googleMiles, etc.).
-
-Let me know if you want it to revert back to a blank input after selection or keep the chosen address shown (both are easy tweaks).
-
-
-
-
-
-
-
-
-You said:
-can you just recreate that code please, Im not comfortable just editing a piece of it
-
-
-ChatGPT said:
-Absolutely — here is the fully updated PricingCalculator.jsx file, fully integrated with the fix for the Google address input glitch.
-
-This version:
-
-Adds a inputText state for controlling the address input box.
-
-Updates onChange to keep typing smooth.
-
-Updates onPlaceChanged to finalize the address after selection.
-
-Preserves the design and structure you already had.
-
-✅ Updated Full Code
-jsx
-Copy
-Edit
 import React, { useState, useRef, useEffect } from 'react';
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 
@@ -76,7 +7,6 @@ const OFFICE_ADDRESS = '1408 SE 17th Avenue, Cape Coral, FL 33990';
 const PricingCalculator = () => {
   const [manualSF, setManualSF] = useState('');
   const [manualMiles, setManualMiles] = useState('');
-  const [inputText, setInputText] = useState('');
   const [googleAddress, setGoogleAddress] = useState('');
   const [googleMiles, setGoogleMiles] = useState(null);
   const [googleSF, setGoogleSF] = useState(10000); // Temporary default for testing
@@ -123,12 +53,14 @@ const PricingCalculator = () => {
   const handlePlaceChanged = () => {
     const place = autocompleteRef.current.getPlace();
     if (place && place.formatted_address) {
-      const formatted = place.formatted_address;
-      setGoogleAddress(formatted);
-      setInputText(formatted); // Set text box to show chosen place
-      calculateGoogleDistance(formatted);
-      setGoogleSF(10000); // Placeholder SF value
+      setGoogleAddress(place.formatted_address);
+      calculateGoogleDistance(place.formatted_address);
+      setGoogleSF(10000); // Set a default SF for Google to test output
     }
+  };
+
+  const roundToNearest50 = (value) => {
+    return Math.round(value / 50) * 50;
   };
 
   const calculateQuote = (sf, miles) => {
@@ -139,7 +71,8 @@ const PricingCalculator = () => {
     const extraSF = Math.max(0, sf - 5000);
     const sfFee = extraSF * 0.05;
     const mileageFee = miles * 1.5;
-    return `$${(baseFee + sfFee + mileageFee).toFixed(2)}`;
+    const total = baseFee + sfFee + mileageFee;
+    return `$${roundToNearest50(total)}`;
   };
 
   const manualQuote = calculateQuote(Number(manualSF), Number(manualMiles));
@@ -180,9 +113,8 @@ const PricingCalculator = () => {
               <input
                 ref={inputRef}
                 type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="Enter property address"
+                defaultValue=""
+                placeholder="Start typing address..."
                 className="w-full p-3 border border-gray-300 rounded mb-4 focus:ring-2 focus:ring-[#6CA635]"
               />
             </Autocomplete>
@@ -204,16 +136,16 @@ const PricingCalculator = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
-        <div className="bg-[#E3EDF5] border border-[#B3C8DD] p-6 rounded text-center shadow-sm">
-          <h3 className="text-xl font-semibold text-[#0F4C81]">Manual Estimate</h3>
-          <p className="text-4xl mt-3 font-bold text-[#0F4C81]">
+        <div className="bg-[#0F4C81] text-white border border-[#0F4C81] p-6 rounded text-center shadow-sm">
+          <h3 className="text-xl font-semibold">Manual Estimate</h3>
+          <p className="text-4xl mt-3 font-bold">
             {manualQuote !== null ? manualQuote : '—'}
           </p>
         </div>
 
-        <div className="bg-[#F0F8EB] border border-[#A7D28D] p-6 rounded text-center shadow-sm">
-          <h3 className="text-xl font-semibold text-[#6CA635]">Google-Based Estimate</h3>
-          <p className="text-4xl mt-3 font-bold text-[#6CA635]">
+        <div className="bg-[#6CA635] text-white border border-[#6CA635] p-6 rounded text-center shadow-sm">
+          <h3 className="text-xl font-semibold">Google-Based Estimate</h3>
+          <p className="text-4xl mt-3 font-bold">
             {googleMiles && googleSF ? googleQuote : '—'}
           </p>
         </div>

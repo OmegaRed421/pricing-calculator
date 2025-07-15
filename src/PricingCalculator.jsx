@@ -7,7 +7,7 @@ const OFFICE_ADDRESS = '1408 SE 17th Avenue, Cape Coral, FL 33990';
 const PricingCalculator = () => {
   const [manualSF, setManualSF] = useState('');
   const [manualMiles, setManualMiles] = useState('');
-  const [googleAddress, setGoogleAddress] = useState(OFFICE_ADDRESS);
+  const [googleAddress, setGoogleAddress] = useState('');
   const [googleMiles, setGoogleMiles] = useState(null);
   const [googleSF, setGoogleSF] = useState(10000); // Temporary default for testing
   const autocompleteRef = useRef(null);
@@ -19,8 +19,8 @@ const PricingCalculator = () => {
   });
 
   useEffect(() => {
-    if (isLoaded && OFFICE_ADDRESS) {
-      calculateGoogleDistance(OFFICE_ADDRESS);
+    if (isLoaded && inputRef.current) {
+      inputRef.current.placeholder = OFFICE_ADDRESS;
     }
   }, [isLoaded]);
 
@@ -109,7 +109,6 @@ const PricingCalculator = () => {
                 ref={inputRef}
                 type="text"
                 placeholder="Enter property address"
-                defaultValue={OFFICE_ADDRESS}
                 className="w-full p-3 border border-gray-300 rounded mb-4 focus:ring-2 focus:ring-[#6CA635]"
               />
             </Autocomplete>

@@ -1,3 +1,72 @@
+const [inputText, setInputText] = useState('');
+
+...
+
+<Autocomplete
+  onLoad={(ref) => (autocompleteRef.current = ref)}
+  onPlaceChanged={() => {
+    handlePlaceChanged();
+    // Optional: lock the text once a valid place is selected
+    const place = autocompleteRef.current.getPlace();
+    if (place && place.formatted_address) {
+      setInputText(place.formatted_address);
+    }
+  }}
+>
+  <input
+    ref={inputRef}
+    type="text"
+    value={inputText}
+    onChange={(e) => setInputText(e.target.value)}
+    placeholder="Enter property address"
+    className="w-full p-3 border border-gray-300 rounded mb-4 focus:ring-2 focus:ring-[#6CA635]"
+  />
+</Autocomplete>
+🔁 And update your handlePlaceChanged to:
+js
+Copy
+Edit
+const handlePlaceChanged = () => {
+  const place = autocompleteRef.current.getPlace();
+  if (place && place.formatted_address) {
+    setGoogleAddress(place.formatted_address);
+    calculateGoogleDistance(place.formatted_address);
+    setGoogleSF(10000);
+  }
+};
+🧠 Why this works
+By binding the input field to inputText, you stop Google from hijacking the input box — React remains in control. Then when a full place is selected, you update both the visual field (inputText) and the internal state (googleAddress, googleMiles, etc.).
+
+Let me know if you want it to revert back to a blank input after selection or keep the chosen address shown (both are easy tweaks).
+
+
+
+
+
+
+
+
+You said:
+can you just recreate that code please, Im not comfortable just editing a piece of it
+
+
+ChatGPT said:
+Absolutely — here is the fully updated PricingCalculator.jsx file, fully integrated with the fix for the Google address input glitch.
+
+This version:
+
+Adds a inputText state for controlling the address input box.
+
+Updates onChange to keep typing smooth.
+
+Updates onPlaceChanged to finalize the address after selection.
+
+Preserves the design and structure you already had.
+
+✅ Updated Full Code
+jsx
+Copy
+Edit
 import React, { useState, useRef, useEffect } from 'react';
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 
@@ -7,6 +76,7 @@ const OFFICE_ADDRESS = '1408 SE 17th Avenue, Cape Coral, FL 33990';
 const PricingCalculator = () => {
   const [manualSF, setManualSF] = useState('');
   const [manualMiles, setManualMiles] = useState('');
+  const [inputText, setInputText] = useState('');
   const [googleAddress, setGoogleAddress] = useState('');
   const [googleMiles, setGoogleMiles] = useState(null);
   const [googleSF, setGoogleSF] = useState(10000); // Temporary default for testing
@@ -53,9 +123,11 @@ const PricingCalculator = () => {
   const handlePlaceChanged = () => {
     const place = autocompleteRef.current.getPlace();
     if (place && place.formatted_address) {
-      setGoogleAddress(place.formatted_address);
-      calculateGoogleDistance(place.formatted_address);
-      setGoogleSF(10000); // Set a default SF for Google to test output
+      const formatted = place.formatted_address;
+      setGoogleAddress(formatted);
+      setInputText(formatted); // Set text box to show chosen place
+      calculateGoogleDistance(formatted);
+      setGoogleSF(10000); // Placeholder SF value
     }
   };
 
@@ -108,6 +180,8 @@ const PricingCalculator = () => {
               <input
                 ref={inputRef}
                 type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
                 placeholder="Enter property address"
                 className="w-full p-3 border border-gray-300 rounded mb-4 focus:ring-2 focus:ring-[#6CA635]"
               />

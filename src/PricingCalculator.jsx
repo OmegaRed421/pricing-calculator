@@ -1,121 +1,152 @@
-import { useState } from "react";
+import React, { useState, useRef, useEffect } from 'react';
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 
-export default function PricingCalculator() {
-  const [squareFeet, setSquareFeet] = useState(0);
-  const [miles, setMiles] = useState(0);
-  const [price, setPrice] = useState(null);
-  const [breakdown, setBreakdown] = useState("");
+const GOOGLE_API_KEY = 'AIzaSyAs0kh_tMgeH19DErLHhIKVAJ644V_UWrU';
+const OFFICE_ADDRESS = '1408 SE 17th Avenue, Cape Coral, FL 33990';
 
-  const calculatePrice = () => {
-    let sf = Number(squareFeet);
-    let mi = Number(miles);
-    let baseFee = 750;
-    let sfCharge = 0;
-    let mileCharge = 0;
-    let rate = 0;
-    let billableSF = Math.max(sf - 5000, 0);
+const PricingCalculator = () => {
+  const [manualSF, setManualSF] = useState('');
+  const [manualMiles, setManualMiles] = useState('');
+  const [googleAddress, setGoogleAddress] = useState(OFFICE_ADDRESS);
+  const [googleMiles, setGoogleMiles] = useState(null);
+  const [googleSF, setGoogleSF] = useState(10000); // Temporary default for testing
+  const autocompleteRef = useRef(null);
+  const inputRef = useRef(null);
 
-    if (sf > 5000 && sf <= 10000) {
-      rate = 0.15;
-    } else if (sf <= 25000) {
-      rate = 0.10;
-    } else if (sf <= 50000) {
-      rate = 0.05;
-    } else if (sf <= 100000) {
-      rate = 0.02;
-    } else if (sf <= 5000) {
-      setPrice("$750.00");
-      if (mi > 50) {
-        mileCharge = (mi - 50) * 5;
-        let total = baseFee + mileCharge;
-        let roundedTotal = Math.round(total / 50) * 50;
-        setPrice(`$${roundedTotal.toFixed(2)}`);
-        setBreakdown(
-          `Base Fee: $${baseFee.toFixed(2)}\n` +
-          `Square Footage Entered: ${sf} SF\n` +
-          `Square Footage Charge: 0\n` +
-          `Miles Entered: ${mi} mi\n` +
-          `Mileage Charge: ${mi - 50} mi × $5 = $${mileCharge.toFixed(2)}\n` +
-          `Rounded Total: $${roundedTotal.toFixed(2)}`
-        );
-        return;
-      } else {
-        setBreakdown(
-          `Base Fee: $750\n` +
-          `Square Footage Entered: ${sf} SF\n` +
-          `Square Footage Charge: 0\n` +
-          `Miles Entered: ${mi} mi\n` +
-          `Mileage Charge: 0 mi × $5 = $0.00\n` +
-          `Rounded Total: $750.00`
-        );
-        return;
-      }
-    } else {
-      setPrice("Over 100,000 - Contact Jim for pricing");
-      setBreakdown("");
-      return;
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: GOOGLE_API_KEY,
+    libraries: ['places'],
+  });
+
+  useEffect(() => {
+    if (isLoaded && OFFICE_ADDRESS) {
+      calculateGoogleDistance(OFFICE_ADDRESS);
     }
+  }, [isLoaded]);
 
-    sfCharge = billableSF * rate;
-
-    if (mi > 50) {
-      mileCharge = (mi - 50) * 5;
+  const calculateGoogleDistance = async (destination) => {
+    try {
+      const service = new window.google.maps.DistanceMatrixService();
+      service.getDistanceMatrix(
+        {
+          origins: [OFFICE_ADDRESS],
+          destinations: [destination],
+          travelMode: window.google.maps.TravelMode.DRIVING,
+        },
+        (response, status) => {
+          if (status === 'OK') {
+            const distanceText = response.rows[0].elements[0].distance.text;
+            const miles = parseFloat(distanceText.replace(/[^0-9.]/g, ''));
+            setGoogleMiles(miles);
+          } else {
+            console.error('Distance Matrix failed:', status);
+            setGoogleMiles(null);
+          }
+        }
+      );
+    } catch (err) {
+      console.error('Distance Matrix error:', err);
+      setGoogleMiles(null);
     }
-
-    let total = baseFee + sfCharge + mileCharge;
-    let roundedTotal = Math.round(total / 50) * 50;
-
-    setPrice(`$${roundedTotal.toFixed(2)}`);
-
-    setBreakdown(
-      `Base Fee: $${baseFee.toFixed(2)}\n` +
-      `Square Footage Entered: ${sf} SF\n` +
-      `Square Footage Charge: ${billableSF} SF × $${rate.toFixed(2)} = $${sfCharge.toFixed(2)}\n` +
-      `Miles Entered: ${mi} mi\n` +
-      `Mileage Charge: ${mi > 50 ? mi - 50 : 0} mi × $5 = $${mileCharge.toFixed(2)}\n` +
-      `Rounded Total: $${roundedTotal.toFixed(2)}`
-    );
   };
 
+  const handlePlaceChanged = () => {
+    const place = autocompleteRef.current.getPlace();
+    if (place && place.formatted_address) {
+      setGoogleAddress(place.formatted_address);
+      calculateGoogleDistance(place.formatted_address);
+      setGoogleSF(10000); // Set a default SF for Google to test output
+    }
+  };
+
+  const calculateQuote = (sf, miles) => {
+    if (!sf || !miles) return null;
+    if (sf > 100000) return 'Over 100,000 - Contact Jim for pricing';
+
+    let baseFee = 750;
+    const extraSF = Math.max(0, sf - 5000);
+    const sfFee = extraSF * 0.05;
+    const mileageFee = miles * 1.5;
+    return `$${(baseFee + sfFee + mileageFee).toFixed(2)}`;
+  };
+
+  const manualQuote = calculateQuote(Number(manualSF), Number(manualMiles));
+  const googleQuote = calculateQuote(Number(googleSF), Number(googleMiles));
+
   return (
-    <div style={{ maxWidth: "500px", margin: "2rem auto", padding: "1.5rem", border: "1px solid #ccc", borderRadius: "10px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)" }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", textAlign: "center", marginBottom: "1rem" }}>Pricing Calculator</h1>
-      <div style={{ marginBottom: "1rem" }}>
-        <label style={{ display: "block", marginBottom: ".5rem" }}>Square Footage</label>
-        <input
-          type="number"
-          value={squareFeet}
-          onChange={(e) => setSquareFeet(e.target.value)}
-          placeholder="Enter square footage"
-          style={{ width: "100%", padding: ".5rem", borderRadius: "6px", border: "1px solid #ccc" }}
-        />
-      </div>
-      <div style={{ marginBottom: "1rem" }}>
-        <label style={{ display: "block", marginBottom: ".5rem" }}>Miles</label>
-        <input
-          type="number"
-          value={miles}
-          onChange={(e) => setMiles(e.target.value)}
-          placeholder="Enter miles"
-          style={{ width: "100%", padding: ".5rem", borderRadius: "6px", border: "1px solid #ccc" }}
-        />
-      </div>
-      <button
-        onClick={calculatePrice}
-        style={{ width: "100%", backgroundColor: "#2563eb", color: "white", padding: ".75rem", borderRadius: "8px", fontSize: "1rem", fontWeight: "bold", border: "none", cursor: "pointer" }}
-      >
-        Calculate Price
-      </button>
-      {price !== null && (
-        <div style={{ marginTop: "1rem", fontSize: "1.25rem", fontWeight: "bold", color: "#16a34a", textAlign: "center" }}>
-          Estimated Total: {price}
+    <div className="max-w-5xl mx-auto p-8 bg-white rounded shadow-lg">
+      <h1 className="text-4xl font-bold text-center text-[#0F4C81] mb-10 drop-shadow-sm">Pricing Calculator</h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="bg-[#F5F8FA] p-6 rounded-lg shadow border-t-4 border-[#0F4C81]">
+          <h2 className="text-xl font-semibold text-[#0F4C81] mb-4">Manual Input</h2>
+          <label className="block mb-2 text-sm font-medium text-gray-700">Square Footage</label>
+          <input
+            type="number"
+            placeholder="Enter square footage"
+            className="w-full p-3 border border-gray-300 rounded mb-4 focus:ring-2 focus:ring-[#0F4C81]"
+            value={manualSF}
+            onChange={(e) => setManualSF(e.target.value)}
+          />
+          <label className="block mb-2 text-sm font-medium text-gray-700">Mileage</label>
+          <input
+            type="number"
+            placeholder="Enter mileage"
+            className="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-[#0F4C81]"
+            value={manualMiles}
+            onChange={(e) => setManualMiles(e.target.value)}
+          />
         </div>
-      )}
-      {breakdown && (
-        <pre style={{ marginTop: "1.5rem", padding: "1rem", background: "#f8f8f8", borderRadius: "8px", whiteSpace: "pre-wrap", fontSize: ".95rem", lineHeight: "1.5" }}>
-          {breakdown}
-        </pre>
-      )}
+
+        <div className="bg-[#F5F8FA] p-6 rounded-lg shadow border-t-4 border-[#6CA635]">
+          <h2 className="text-xl font-semibold text-[#6CA635] mb-4">Lookup by Address</h2>
+          {isLoaded ? (
+            <Autocomplete
+              onLoad={(ref) => (autocompleteRef.current = ref)}
+              onPlaceChanged={handlePlaceChanged}
+            >
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Enter property address"
+                defaultValue={OFFICE_ADDRESS}
+                className="w-full p-3 border border-gray-300 rounded mb-4 focus:ring-2 focus:ring-[#6CA635]"
+              />
+            </Autocomplete>
+          ) : (
+            <input
+              type="text"
+              disabled
+              placeholder="Loading Google Maps..."
+              className="w-full p-3 border border-gray-300 rounded bg-gray-100 text-gray-500 mb-4"
+            />
+          )}
+
+          <div className="text-sm text-gray-700 space-y-1">
+            <p><strong>Address:</strong> {googleAddress || '—'}</p>
+            <p><strong>Mileage:</strong> {googleMiles !== null ? `${googleMiles} mi` : '—'}</p>
+            <p><strong>Square Footage:</strong> {googleSF !== null ? `${googleSF} SF` : 'Not available'}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+        <div className="bg-[#E3EDF5] border border-[#B3C8DD] p-6 rounded text-center shadow-sm">
+          <h3 className="text-xl font-semibold text-[#0F4C81]">Manual Estimate</h3>
+          <p className="text-4xl mt-3 font-bold text-[#0F4C81]">
+            {manualQuote !== null ? manualQuote : '—'}
+          </p>
+        </div>
+
+        <div className="bg-[#F0F8EB] border border-[#A7D28D] p-6 rounded text-center shadow-sm">
+          <h3 className="text-xl font-semibold text-[#6CA635]">Google-Based Estimate</h3>
+          <p className="text-4xl mt-3 font-bold text-[#6CA635]">
+            {googleMiles && googleSF ? googleQuote : '—'}
+          </p>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default PricingCalculator;

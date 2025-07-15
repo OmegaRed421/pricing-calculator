@@ -63,17 +63,22 @@ const PricingCalculator = () => {
     return Math.round(value / 50) * 50;
   };
 
-  const calculateQuote = (sf, miles) => {
-    if (!sf || !miles) return null;
-    if (sf > 100000) return 'Over 100,000 - Contact Jim for pricing';
+const calculateQuote = (sfInput, milesInput) => {
+  const sf = parseFloat(sfInput);
+  const miles = parseFloat(milesInput);
 
-    let baseFee = 750;
-    const extraSF = Math.max(0, sf - 5000);
-    const sfFee = extraSF * 0.05;
-    const mileageFee = miles * 1.5;
-    const total = baseFee + sfFee + mileageFee;
-    return `$${roundToNearest50(total)}`;
-  };
+  if (isNaN(sf) || isNaN(miles) || sf <= 0 || miles <= 0) return null;
+
+  if (sf > 100000) return 'Over 100,000 - Contact Jim for pricing';
+
+  const baseFee = 750;
+  const extraSF = Math.max(0, sf - 5000);
+  const sfFee = extraSF * 0.05;
+  const mileageFee = miles * 1.5;
+  const total = baseFee + sfFee + mileageFee;
+
+  return `$${roundToNearest50(total)}`;
+};
 
   const manualQuote = calculateQuote(Number(manualSF), Number(manualMiles));
   const googleQuote = calculateQuote(Number(googleSF), Number(googleMiles));
